@@ -18,7 +18,7 @@
     <string name="label_data">Data:</string>
     <string name="label_device_address">Device address:</string>
     <string name="label_state">State:</string>
-    <string name="no_data">No data</string>
+    <string name="no_data">Searching for Bluetooth services...</string>
     <string name="connected">Connected</string>
     <string name="disconnected">Disconnected</string>
     <string name="title_devices">BLE Device Scan</string>
@@ -33,4 +33,34 @@
     <string name="menu_disconnect">Disconnect</string>
     <string name="menu_scan">Scan</string>
     <string name="menu_stop">Stop</string>
+
+<!--    <string name="app_name">Ketone Scope</string>-->
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+    <string name="nav_header_title">Android Studio</string>
+    <string name="nav_header_subtitle">android.studio@android.com</string>
+    <string name="nav_header_desc">Navigation header</string>
+    <string name="action_settings">Settings</string>
+
+    <string name="disconnected_message">Disconnected</string>
+    <string name="title_activity_main3">Main3Activity</string>
+    <string name="section_format">Hello World from section: %1$d</string>
+    <string name="location_permission_denied_String">I\'m sorry without that permission the app is useless. It will now close.</string>
+    <string name="action_title_bluetooth_connect">Connect</string>
+    <string name="action_title_receive">Receive data</string>
+    <string name="action_title_bluetooth_disconnect">Disconnect</string>
+    <string name="pause">Pause</string>
+    <string name="play">play</string>
+    <string name="action_save">Save</string>
+    <string name="action_load">Load</string>
+    <string name="plot_reset_button">Reset</string>
+    <string name="action_help">Help</string>
+    <string name="save_error_message">Unable to save. Check your inputs and try again.</string>
+    <string name="detection_fail_waiting">We failed to detect breath in time. Make sure you continuously breath into the device when prompted.</string>
+    <string name="detection_fail_breath">We failed to detect a deep breath. If this continuously occurs try holding your breath for 5 seconds before blowing or check out our handy guide under \'help\'.</string>
+    <string name="detection_fail_deep_breath">We failed to detect acetone. Please send your device back for maintenance and check using your levels via a pricker</string>
+    <string name="detection_fail_sleep">The internal conditions are unsuitable for detection probably due to prior attempts. Please wait a few minutes for levels to return to normal.</string>
+    <string name="detection_success">The reading was successful. Your current acetone levels are %f ohms\n(currently a measure of sensor resistance)</string>
+    <string name="monitor_countdown">Heating the sensor Ready in %d seconds</string>
+    <string name="request_permission_title">Explanation for %s request</string>
 </resources>

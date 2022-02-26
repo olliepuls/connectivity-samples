@@ -66,6 +66,9 @@ public class BluetoothLeService extends Service {
     public final static UUID UUID_HEART_RATE_MEASUREMENT =
             UUID.fromString(SampleGattAttributes.HEART_RATE_MEASUREMENT);
 
+    public final static UUID UUID_ACETONE_MEASUREMENT =
+            UUID.fromString(SampleGattAttributes.ACETONE_MEASUREMENT_CHARACTERISTIC);
+
     // Implements callback methods for GATT events that the app cares about.  For example,
     // connection change and services discovered.
     private final BluetoothGattCallback mGattCallback = new BluetoothGattCallback() {
@@ -139,6 +142,10 @@ public class BluetoothLeService extends Service {
             final int heartRate = characteristic.getIntValue(format, 1);
             Log.d(TAG, String.format("Received heart rate: %d", heartRate));
             intent.putExtra(EXTRA_DATA, String.valueOf(heartRate));
+        } else if (UUID_ACETONE_MEASUREMENT.equals(characteristic.getUuid())){
+            int format = BluetoothGattCharacteristic.FORMAT_UINT32;
+            final int acetoneMeasurement = characteristic.getIntValue(format, 0);
+            intent.putExtra(EXTRA_DATA, String.valueOf(acetoneMeasurement));
         } else {
             // For all other profiles, writes the data formatted in HEX.
             final byte[] data = characteristic.getValue();
