@@ -67,5 +67,9 @@
     </LinearLayout>
     <ExpandableListView android:id="@+id/gatt_services_list"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"/>
+            android:layout_height="200dp"/>
+    <ListView android:id="@+id/prev_reading_list"
+        android:layout_width="match_parent"
+        android:layout_height="320dp" />
+
 </LinearLayout>

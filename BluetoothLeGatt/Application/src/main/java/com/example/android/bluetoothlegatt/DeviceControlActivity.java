@@ -19,6 +19,7 @@ package com.example.android.bluetoothlegatt;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattService;
 import android.content.BroadcastReceiver;
@@ -31,17 +32,36 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.support.annotation.NonNull;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.BaseAdapter;
 import android.widget.ExpandableListView;
+import android.widget.ListView;
 import android.widget.SimpleExpandableListAdapter;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.TextView;
+
+
 import com.example.android.bluetoothlegatt.PermissionManager;
 import com.example.android.bluetoothlegatt.PermissionManager.Permission;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -69,11 +89,29 @@ public class DeviceControlActivity extends Activity {
     private boolean mConnected = false;
     private BluetoothGattCharacteristic mNotifyCharacteristic;
 
+    private ListView mAcetoneDataList;
+
+    private Context context;
+
+    File mFile;
+
     private final String LIST_NAME = "NAME";
     private final String LIST_UUID = "UUID";
 
+    private final String a_filename = "acetone_data_vals";
+    private final String t_filename = "time_data_vals";
+
+    private ArrayList<AcetoneDbPoint> acetoneDb_data;
+    private ArrayList<Long> time_data;
+    private ArrayList<Long> acetone_data;
+
+    private AcetoneDbAdapter mAcetoneDbAdapter;
+
     protected PermissionManager mPermissionManager;
     // Code to manage Service lifecycle.
+
+
+
     private final ServiceConnection mServiceConnection = new ServiceConnection() {
 
         @Override
@@ -137,11 +175,11 @@ public class DeviceControlActivity extends Activity {
                         if ((charaProp | BluetoothGattCharacteristic.PROPERTY_READ) > 0) {
                             // If there is an active notification on a characteristic, clear
                             // it first so it doesn't update the data field on the user interface.
-                            if (mNotifyCharacteristic != null) {
-                                mBluetoothLeService.setCharacteristicNotification(
-                                        mNotifyCharacteristic, false);
-                                mNotifyCharacteristic = null;
-                            }
+//                            if (mNotifyCharacteristic != null) {
+//                                mBluetoothLeService.setCharacteristicNotification(
+//                                        mNotifyCharacteristic, false);
+//                                mNotifyCharacteristic = null;
+//                            }
                             mBluetoothLeService.readCharacteristic(characteristic);
                         }
                         if ((charaProp | BluetoothGattCharacteristic.PROPERTY_NOTIFY) > 0) {
@@ -164,7 +202,14 @@ public class DeviceControlActivity extends Activity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.gatt_services_characteristics);
+        context = getApplicationContext();
+        acetoneDb_data = new ArrayList<AcetoneDbPoint>();
+        acetone_data = new ArrayList<Long>();
+        time_data = new ArrayList<Long>();
 
+        readData();
+        String list = acetone_data.stream().map(String::valueOf).collect(Collectors.joining(", "));;
+        Log.i(TAG, list);
 
         final Intent intent = getIntent();
         mDeviceName = intent.getStringExtra(EXTRAS_DEVICE_NAME);
@@ -176,6 +221,11 @@ public class DeviceControlActivity extends Activity {
         mGattServicesList.setOnChildClickListener(servicesListClickListner);
         mConnectionState = (TextView) findViewById(R.id.connection_state);
         mDataField = (TextView) findViewById(R.id.data_value);
+
+        mAcetoneDataList = (ListView) findViewById(R.id.prev_reading_list);
+        mAcetoneDbAdapter = new AcetoneDbAdapter(acetoneDb_data);
+        mAcetoneDataList.setAdapter(mAcetoneDbAdapter);
+        mAcetoneDbAdapter.notifyDataSetChanged();
 
         getActionBar().setTitle(mDeviceName);
         getActionBar().setDisplayHomeAsUpEnabled(true);
@@ -255,6 +305,34 @@ public class DeviceControlActivity extends Activity {
     private void displayData(String data) {
         if (data != null) {
             mDataField.setText(data);
+            Long time = Instant.now().getEpochSecond();
+            Long acetone = Long.valueOf(data);
+
+            AcetoneDbPoint dbPoint = new AcetoneDbPoint(time, acetone);
+            time_data.add(time);
+            acetone_data.add(acetone);
+            acetoneDb_data.add(dbPoint);
+
+            mAcetoneDbAdapter.addDbEntry(dbPoint);
+            mAcetoneDbAdapter.notifyDataSetChanged();
+
+            Log.i(TAG, time.toString() + acetone.toString());
+
+            try (FileOutputStream fos = context.openFileOutput(a_filename, Context.MODE_PRIVATE)) {
+                ObjectOutputStream obj_os = new ObjectOutputStream(fos);
+                obj_os.writeObject(acetone_data);
+                obj_os.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            try (FileOutputStream fos = context.openFileOutput(t_filename, Context.MODE_PRIVATE)) {
+                ObjectOutputStream obj_os = new ObjectOutputStream(fos);
+                obj_os.writeObject(time_data);
+                obj_os.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -333,4 +411,126 @@ public class DeviceControlActivity extends Activity {
         intentFilter.addAction(BluetoothLeService.ACTION_DATA_AVAILABLE);
         return intentFilter;
     }
+
+    private void readData() {
+
+        try {
+            FileInputStream fis = context.openFileInput(a_filename);
+            ObjectInputStream in = new ObjectInputStream(fis);
+            acetone_data = (ArrayList<Long>) in.readObject();
+            in.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+
+        try {
+            FileInputStream fis = context.openFileInput(t_filename);
+            ObjectInputStream in = new ObjectInputStream(fis);
+            time_data = (ArrayList<Long>) in.readObject();
+            in.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+
+        clearAndMergeLists();
+
+    }
+
+    private void clearAndMergeLists() {
+        acetoneDb_data = new ArrayList<AcetoneDbPoint>();
+        for (int i = 0; i < time_data.size(); i++) {
+            AcetoneDbPoint entry = new AcetoneDbPoint(time_data.get(i), acetone_data.get(i));
+            acetoneDb_data.add(entry);
+        }
+    }
+
+    private class AcetoneDbPoint {
+        public Long time;
+        public Long acetone;
+
+        public AcetoneDbPoint(Long p_time, Long p_acetone) {
+            time = p_time;
+            acetone = p_acetone;
+
+        }
+    }
+
+    // Adapter for holding devices found through scanning.
+    private class AcetoneDbAdapter extends BaseAdapter {
+        private ArrayList<AcetoneDbPoint> mAcetoneData;
+        private LayoutInflater mInflator;
+
+        public AcetoneDbAdapter(ArrayList<AcetoneDbPoint> data) {
+            super();
+            mAcetoneData = data;
+            mInflator = DeviceControlActivity.this.getLayoutInflater();
+        }
+
+        public void addDbEntry(AcetoneDbPoint entry) {
+            if(!mAcetoneData.contains(entry)) {
+                mAcetoneData.add(entry);
+            }
+        }
+
+        public AcetoneDbPoint getEntry(int position) {
+            return mAcetoneData.get(position);
+        }
+
+        public void clear() {
+            mAcetoneData.clear();
+        }
+
+        @Override
+        public int getCount() {
+            return mAcetoneData.size();
+        }
+
+        @Override
+        public Object getItem(int i) {
+            return mAcetoneData.get(i);
+        }
+
+        @Override
+        public long getItemId(int i) {
+            return i;
+        }
+
+        @Override
+        public View getView(int i, View view, ViewGroup viewGroup) {
+            DbViewHolder viewHolder;
+            // General ListView optimization code.
+            if (view == null) {
+                view = mInflator.inflate(R.layout.listitem_acetone_data, null);
+                viewHolder = new DbViewHolder();
+                viewHolder.time = (TextView) view.findViewById(R.id.reading_time);
+                viewHolder.data = (TextView) view.findViewById(R.id.acetone_conc);
+                view.setTag(viewHolder);
+            } else {
+                viewHolder = (DbViewHolder) view.getTag();
+            }
+
+            AcetoneDbPoint entry = mAcetoneData.get(i);
+
+            Date date = new java.util.Date(entry.time*1000L);
+// the format of your date
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z");
+// give a timezone reference for formatting (see comment at the bottom)
+            sdf.setTimeZone(java.util.TimeZone.getTimeZone("GMT+11"));
+            String timeStr = sdf.format(date);
+            viewHolder.time.setText(timeStr);
+            viewHolder.data.setText(entry.acetone.toString());
+
+            return view;
+        }
+    }
+
+    static class DbViewHolder {
+        TextView time;
+        TextView data;
+    }
+
 }
